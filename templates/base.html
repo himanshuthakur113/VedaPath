@@ -2,7 +2,17 @@
 <html lang = "en">
 <head>
     <meta charset = "UTF-8">
+    <meta name = "viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}VedaPath{% endblock %}</title>
+    <style>
+        
+        body { font-family: 'Segoe UI', sans-serif; background: #0f1117; color: #e8edf8; margin: 0; }
+        nav { background: #1a1e2e; padding: 1rem; border-bottom: 1px solid #2a3260; }
+        nav ul { list-style: none; display: flex; gap: 20px; justify-content: center; }
+        nav a { color: #c8a84b; text-decoration: none; font-size: 0.9rem; text-transform: uppercase; }
+
+    </style>
+    {% block styles %}{% endblock %}
 </head>
 <body>
 

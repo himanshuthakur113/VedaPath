@@ -1,5 +1,13 @@
+import base64
+import numpy as np
+import io
+from PIL import Image
 from flask import Flask
 from flask import render_template
+from flask import request
+from flask import jsonify
+
+from Prakriti_assessment.vision_model.face_features import _extract
 
 app = Flask(__name__)
 
@@ -9,7 +17,24 @@ def home():
 
 @app.route('/prakriti')
 def prakriti():
-    return "<h1>Prakriti Assessment Page</h1>"
+    return render_template('prakriti.html')
+
+@app.route('/analyze',methods=['POST'])
+def analyze():
+    data = request.json
+    image_b64 = data.get("image")
+
+    if not image_b64:
+        return jsonify({"error": "No image data"}), 400
+    
+    header, encoded = image_b64.split(",",1)
+    image_bytes = base64.b64decode(encoded)
+    rgb = np.array(Image.open(io.BytesIO(image_bytes)).convert("RGB"))
+
+    results = _extract(rgb)
+
+    return jsonify(results)
+
 
 @app.route('/disease')
 def disease():
