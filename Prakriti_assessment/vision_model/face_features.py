@@ -1,11 +1,12 @@
 import math
+import os
 import numpy as np
 import cv2
 import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 
-MODEL_PATH = "face_landmarker.task"
+MODEL_PATH = os.path.join(os.path.dirname(__file__),"face_landmarker.task")
 
 
 LM = {

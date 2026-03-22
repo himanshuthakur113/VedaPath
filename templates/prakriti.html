@@ -33,7 +33,6 @@
       border-radius: 50%;
     }
 
-    /* Capture & Start Buttons */
     .controls {
       display: flex;
       gap: 12px;
@@ -115,13 +114,25 @@
     const gridEl     = document.getElementById("grid");
 
     async function startCamera() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setStatus("Camera API unavailable — open the app via http://localhost:5000 (not 127.0.0.1).", true);
+        return;
+      }
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
         video.srcObject = stream;
         captureBtn.disabled = false;
         setStatus("Camera ready — align your face and press Capture");
-      } catch {
-        setStatus("Camera access denied", true);
+      } catch (err) {
+        if (err.name === "NotAllowedError") {
+          setStatus("Camera access denied — please allow camera permission in your browser.", true);
+        } else if (err.name === "NotFoundError") {
+          setStatus("No camera found on this device.", true);
+        } else if (!navigator.mediaDevices) {
+          setStatus("Camera API unavailable — use http://localhost:5000 (not 127.0.0.1).", true);
+        } else {
+          setStatus("Camera error: " + err.message, true);
+        }
       }
     }
 
