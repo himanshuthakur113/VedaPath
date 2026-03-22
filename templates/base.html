@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang = "en">
+<head>
+    <meta charset = "UTF-8">
+    <title>{% block title %}VedaPath{% endblock %}</title>
+</head>
+<body>
+
+    <header>
+        <nav>
+            <strong>AyurHealth</strong>
+            <ul>
+                <li><a href = "{{ url_for('home') }}">Home</a></li>
+                <li><a href = "{{ url_for('prakriti') }}">Prakriti Assessment</a></li>
+                <li><a href = "{{ url_for('disease') }}">Disease Detection</a></li>
+                <li><a href = "{{ url_for('wellness') }}">General Wellness</a></li>
+                <li><a href = "{{ url_for('profile') }}">Profile</a></li>
+            </ul>
+        </nav>
+    </header>
+    <hr>
+
+    <main>
+        {% block content %}
+        {% endblock %}
+    </main>
+
+    <hr>
+    <footer>
+        <p>&copy; 2026 Vedapath Project</p>
+        <p>Himanshu Thakur</p>
+    </footer>
+
+</body>
+</html>
+
