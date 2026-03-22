@@ -1,188 +1,238 @@
 {% extends "base.html" %}
-
-{% block title %}Prakriti Extractor{% endblock %}
+{% block title %}Face Analysis — VedaPath{% endblock %}
 
 {% block styles %}
 <style>
-    .camera-box {
-      position: relative;
-      width: 480px;
-      max-width: 100%;
-      border-radius: 16px;
-      overflow: hidden;
-      border: 1px solid #2a3260;
-      background: #000;
-      margin: 0 auto;
-    }
-    video, canvas { width: 100%; display: block; }
-    canvas { display: none; }
+  .page { display: flex; flex-direction: column; align-items: center; padding: 40px 20px 60px; }
+  h1 { margin-bottom: 6px; }
+  .subtitle { color: #556; font-size: 0.88rem; margin-bottom: 28px; }
 
+  .camera-wrap {
+    position: relative; width: 380px; max-width: 100%;
+    border-radius: 20px; overflow: hidden;
+    border: 1px solid #2a3260; background: #000;
+  }
+  video { width: 100%; display: block; }
+  canvas { display: none; }
 
-    .overlay {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      pointer-events: none;
-    }
-    .face-oval {
-      width: 42%;
-      aspect-ratio: 3/4;
-      border: 2px dashed rgba(79,124,255,0.6);
-      border-radius: 50%;
-    }
+  .overlay {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    pointer-events: none;
+  }
+  .face-oval {
+    width: 44%; aspect-ratio: 3/4;
+    border: 2px solid rgba(79,124,255,0.55);
+    border-radius: 50%;
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+  .face-oval.scanning {
+    border-color: #c8a84b;
+    animation: pulse-oval 1s ease-out infinite;
+  }
+  .face-oval.done {
+    border-color: #4ade80;
+    box-shadow: 0 0 18px rgba(74,222,128,0.5);
+  }
+  @keyframes pulse-oval {
+    0%   { box-shadow: 0 0 0 0   rgba(200,168,75,0.7); }
+    70%  { box-shadow: 0 0 0 14px rgba(200,168,75,0);   }
+    100% { box-shadow: 0 0 0 0   rgba(200,168,75,0);   }
+  }
 
-    .controls {
-      display: flex;
-      gap: 12px;
-      margin-top: 20px;
-      justify-content: center;
-    }
-    button {
-      padding: 11px 28px;
-      border: none;
-      border-radius: 10px;
-      font-size: 0.9rem;
-      cursor: pointer;
-      font-family: inherit;
-      transition: opacity 0.2s;
-    }
-    #startBtn  { background: #4f7cff; color: #fff; }
-    #captureBtn { background: #c8a84b; color: #0f1117; }
-    #captureBtn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .scan-line {
+    position: absolute; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, #c8a84b, transparent);
+    opacity: 0; pointer-events: none;
+  }
+  .scan-line.active {
+    opacity: 1;
+    animation: scan 1.2s ease-in-out infinite;
+  }
+  @keyframes scan {
+    0%   { top: 15%; }
+    50%  { top: 85%; }
+    100% { top: 15%; }
+  }
 
-    #results {
-      display: none;
-      margin: 32px auto 0;
-      width: 480px;
-      max-width: 100%;
-    }
-    .grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-    }
-    .chip {
-      background: #1a1e2e;
-      border: 1px solid #2a3260;
-      border-radius: 10px;
-      padding: 12px 14px;
-    }
-    .chip-label {
-      font-size: 0.68rem;
-      text-transform: uppercase;
-      color: #556;
-      margin-bottom: 5px;
-    }
-    .chip-value { font-size: 0.85rem; color: #e8edf8; }
+  .flash {
+    position: absolute; inset: 0;
+    background: #fff; opacity: 0; pointer-events: none;
+    transition: opacity 0.05s;
+  }
+  .flash.pop { opacity: 0.8; }
+
+  .bracket {
+    position: absolute; width: 22px; height: 22px;
+    border-color: #c8a84b; border-style: solid; opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .bracket.show { opacity: 1; }
+  .br-tl { top: 10px; left: 10px;  border-width: 2px 0 0 2px; }
+  .br-tr { top: 10px; right: 10px; border-width: 2px 2px 0 0; }
+  .br-bl { bottom: 10px; left: 10px;  border-width: 0 0 2px 2px; }
+  .br-br { bottom: 10px; right: 10px; border-width: 0 2px 2px 0; }
+
+  .controls { display: flex; gap: 12px; margin-top: 20px; }
+  .btn {
+    padding: 11px 26px; border: none; border-radius: 10px;
+    font-size: 0.9rem; cursor: pointer; font-family: inherit;
+    transition: opacity 0.2s, transform 0.1s;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  #startBtn   { background: #4f7cff; color: #fff; }
+  #captureBtn { background: #c8a84b; color: #0f1117; }
+
+  #status { margin-top: 14px; font-size: 0.88rem; color: #9ab; min-height: 20px; text-align: center; }
+  #status.error   { color: #f87; }
+  #status.success { color: #4ade80; }
+
+  .steps { display: flex; gap: 8px; margin-top: 24px; font-size: 0.75rem; color: #556; }
+  .step { display: flex; align-items: center; gap: 6px; }
+  .step-dot {
+    width: 22px; height: 22px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: #1a1e2e; border: 1px solid #2a3260; font-size: 0.65rem; color: #556;
+  }
+  .step.active .step-dot { background: #4f7cff; border-color: #4f7cff; color: #fff; }
+  .step.done   .step-dot { background: #4ade80; border-color: #4ade80; color: #0f1117; }
+  .step-sep { color: #2a3260; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div style="text-align: center; padding: 40px;">
-    <h1>Prakriti Face Extractor</h1>
-    <p style="color: #556;">Start camera → align face in oval → Capture</p>
+<div class="page">
+  <h1>Face Analysis</h1>
+  <p class="subtitle">We read your facial features to help determine your Prakriti</p>
 
-    <div class="camera-box">
-        <video id="video" autoplay playsinline muted></video>
-        <canvas id="canvas"></canvas>
-        <div class="overlay"><div class="face-oval"></div></div>
+  <div class="steps">
+    <div class="step active" id="s1"><div class="step-dot">1</div> Start camera</div>
+    <span class="step-sep">›</span>
+    <div class="step" id="s2"><div class="step-dot">2</div> Align face</div>
+    <span class="step-sep">›</span>
+    <div class="step" id="s3"><div class="step-dot">3</div> Capture</div>
+  </div>
+
+  <div style="margin-top: 24px;">
+    <div class="camera-wrap">
+      <video id="video" autoplay playsinline muted></video>
+      <canvas id="canvas"></canvas>
+      <div class="scan-line" id="scanLine"></div>
+      <div class="flash" id="flash"></div>
+      <div class="overlay"><div class="face-oval" id="faceOval"></div></div>
+      <div class="bracket br-tl" id="b1"></div>
+      <div class="bracket br-tr" id="b2"></div>
+      <div class="bracket br-bl" id="b3"></div>
+      <div class="bracket br-br" id="b4"></div>
     </div>
+  </div>
 
-    <div class="controls">
-        <button id="startBtn" onclick="startCamera()">▶ Start Camera</button>
-        <button id="captureBtn" onclick="capture()" disabled>⬤ Capture</button>
-    </div>
-
-    <div id="status">Camera inactive</div>
-
-    <div id="results">
-        <h2>Extracted Features</h2>
-        <div class="grid" id="grid"></div>
-    </div>
+  <div class="controls">
+    <button class="btn" id="startBtn" onclick="startCamera()">▶ Start Camera</button>
+    <button class="btn" id="captureBtn" onclick="capture()" disabled>⬤ Capture</button>
+  </div>
+  <div id="status">Camera inactive</div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-    const video      = document.getElementById("video");
-    const canvas     = document.getElementById("canvas");
-    const captureBtn = document.getElementById("captureBtn");
-    const statusEl   = document.getElementById("status");
-    const resultsEl  = document.getElementById("results");
-    const gridEl     = document.getElementById("grid");
+  const video      = document.getElementById("video");
+  const canvas     = document.getElementById("canvas");
+  const captureBtn = document.getElementById("captureBtn");
+  const startBtn   = document.getElementById("startBtn");
+  const statusEl   = document.getElementById("status");
+  const faceOval   = document.getElementById("faceOval");
+  const scanLine   = document.getElementById("scanLine");
+  const flash      = document.getElementById("flash");
+  const brackets   = document.querySelectorAll(".bracket");
 
-    async function startCamera() {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        setStatus("Camera API unavailable — open the app via http://localhost:5000 (not 127.0.0.1).", true);
-        return;
-      }
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        video.srcObject = stream;
-        captureBtn.disabled = false;
-        setStatus("Camera ready — align your face and press Capture");
-      } catch (err) {
-        if (err.name === "NotAllowedError") {
-          setStatus("Camera access denied — please allow camera permission in your browser.", true);
-        } else if (err.name === "NotFoundError") {
-          setStatus("No camera found on this device.", true);
-        } else if (!navigator.mediaDevices) {
-          setStatus("Camera API unavailable — use http://localhost:5000 (not 127.0.0.1).", true);
-        } else {
-          setStatus("Camera error: " + err.message, true);
-        }
-      }
+  function setStep(n) {
+    [1,2,3].forEach(i => {
+      const el = document.getElementById("s"+i);
+      el.classList.remove("active","done");
+      if (i < n)  el.classList.add("done");
+      if (i === n) el.classList.add("active");
+    });
+  }
+
+  async function startCamera() {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setStatus("Camera unavailable — open via http://localhost:5000", true); return;
     }
-
-    async function capture() {
-      canvas.width  = video.videoWidth;
-      canvas.height = video.videoHeight;
-      canvas.getContext("2d").drawImage(video, 0, 0);
-
-      const b64 = canvas.toDataURL("image/jpeg", 0.92);
-      setStatus("Analyzing…");
-      captureBtn.disabled = true;
-
-      try {
-        const res  = await fetch("/analyze", {
-          method:  "POST",
-          headers: { "Content-Type": "application/json" },
-          body:    JSON.stringify({ image: b64 }),
-        });
-        const data = await res.json();
-
-        if (!res.ok) {
-          setStatus(data.error || "Analysis failed", true);
-        } else {
-          showResults(data);
-          setStatus("Done ✓");
-        }
-      } catch (e) {
-        setStatus("Server error: " + e.message, true);
-      }
-
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      video.srcObject = stream;
+      startBtn.disabled = true;
       captureBtn.disabled = false;
+      setStep(2);
+      setStatus("Align your face inside the oval, then press Capture");
+    } catch(err) {
+      const msg = err.name === "NotAllowedError" ? "Camera permission denied."
+                : err.name === "NotFoundError"   ? "No camera found on this device."
+                : "Camera error: " + err.message;
+      setStatus(msg, true);
     }
+  }
 
-    function showResults(feats) {
-      gridEl.innerHTML = "";
-      for (const [label, value] of Object.entries(feats)) {
-        gridEl.innerHTML += `
-          <div class="chip">
-            <div class="chip-label">${label}</div>
-            <div class="chip-value">${value}</div>
-          </div>`;
+  async function capture() {
+    captureBtn.disabled = true;
+    startBtn.disabled   = true;
+    setStep(3);
+
+    brackets.forEach(b => b.classList.add("show"));
+    faceOval.classList.add("scanning");
+    scanLine.classList.add("active");
+    setStatus("Scanning facial features…");
+    await sleep(1500);
+
+    scanLine.classList.remove("active");
+    canvas.width  = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext("2d").drawImage(video, 0, 0);
+    flash.classList.add("pop");
+    await sleep(80);
+    flash.classList.remove("pop");
+
+    faceOval.classList.remove("scanning");
+    faceOval.classList.add("done");
+    setStatus("Analyzing…");
+
+    const b64 = canvas.toDataURL("image/jpeg", 0.92);
+    try {
+      const res  = await fetch("/analyze", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: b64 }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        resetCapture();
+        setStatus(data.error || "Analysis failed — try again", true);
+      } else {
+        sessionStorage.setItem("faceFeatures", JSON.stringify(data));
+        setStatus("Face analyzed ✓  Proceeding to survey…", false, true);
+        await sleep(900);
+        window.location.href = "/survey";
       }
-      resultsEl.style.display = "block";
+    } catch(e) {
+      resetCapture();
+      setStatus("Server error: " + e.message, true);
     }
+  }
 
-    function setStatus(msg, isError = false) {
-      statusEl.textContent = msg;
-      statusEl.className   = isError ? "error" : "";
-    }
-  </script>
+  function resetCapture() {
+    faceOval.classList.remove("scanning","done");
+    brackets.forEach(b => b.classList.remove("show"));
+    captureBtn.disabled = false;
+    startBtn.disabled   = false;
+    setStep(2);
+  }
+
+  function setStatus(msg, isError=false, isSuccess=false) {
+    statusEl.textContent = msg;
+    statusEl.className   = isError ? "error" : isSuccess ? "success" : "";
+  }
+  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+</script>
 {% endblock %}
-
-

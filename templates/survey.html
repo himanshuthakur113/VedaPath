@@ -1,0 +1,453 @@
+{% extends "base.html" %}
+{% block title %}Prakriti Survey — VedaPath{% endblock %}
+
+{% block styles %}
+<style>
+  .survey-page {
+    min-height: 80vh; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 40px 20px 60px;
+  }
+
+ 
+  .progress-wrap { width: 420px; max-width: 100%; margin-bottom: 32px; }
+  .progress-meta { display: flex; justify-content: space-between; font-size: 0.75rem; color: #556; margin-bottom: 8px; }
+  .progress-bar  { height: 3px; background: #1a1e2e; border-radius: 2px; }
+  .progress-fill { height: 100%; background: #c8a84b; border-radius: 2px; transition: width 0.4s ease; }
+
+ 
+  .q-card {
+    width: 420px; max-width: 100%;
+    background: #1a1e2e; border: 1px solid #2a3260;
+    border-radius: 18px; padding: 32px 28px;
+    display: none;
+  }
+  .q-card.active { display: block; animation: fadeUp 0.3s ease; }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .q-number { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: #c8a84b; margin-bottom: 10px; }
+  .q-text   { font-size: 1.05rem; color: #e8edf8; margin-bottom: 8px; line-height: 1.4; }
+  .q-hint   { font-size: 0.78rem; color: #556; margin-bottom: 22px; }
+
+  
+  .options { display: flex; flex-direction: column; gap: 10px; }
+  .opt-btn {
+    background: #0f1117; border: 1px solid #2a3260; border-radius: 12px;
+    color: #c8d0e8; padding: 13px 18px; font-size: 0.88rem;
+    font-family: inherit; cursor: pointer; text-align: left;
+    transition: border-color 0.2s, background 0.2s, transform 0.1s;
+  }
+  .opt-btn:hover   { border-color: #4f7cff; background: #161b2e; }
+  .opt-btn.selected { border-color: #c8a84b; background: #1f1a0e; color: #e8c96b; }
+  .opt-btn:active  { transform: scale(0.98); }
+
+  
+  .nav-row { display: flex; justify-content: space-between; align-items: center; margin-top: 24px; }
+  .nav-btn {
+    background: none; border: 1px solid #2a3260; border-radius: 10px;
+    color: #9ab; padding: 9px 20px; font-size: 0.85rem;
+    font-family: inherit; cursor: pointer; transition: border-color 0.2s, color 0.2s;
+  }
+  .nav-btn:hover:not(:disabled) { border-color: #4f7cff; color: #e8edf8; }
+  .nav-btn:disabled { opacity: 0.25; cursor: not-allowed; }
+  .next-btn {
+    background: #4f7cff; border: none; border-radius: 10px;
+    color: #fff; padding: 10px 24px; font-size: 0.88rem;
+    font-family: inherit; cursor: pointer; transition: opacity 0.2s;
+  }
+  .next-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .submit-btn {
+    background: #c8a84b; border: none; border-radius: 10px;
+    color: #0f1117; padding: 10px 24px; font-size: 0.88rem;
+    font-family: inherit; cursor: pointer; font-weight: 600;
+  }
+  .submit-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  /* ── Result ── */
+  #result-section { display: none; width: 420px; max-width: 100%; text-align: center; animation: fadeUp 0.4s ease; }
+
+  .dosha-card {
+    background: #1a1e2e; border: 1px solid #2a3260;
+    border-radius: 18px; padding: 36px 28px 28px;
+  }
+  .result-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 1px; color: #556; }
+  .dosha-name {
+    font-size: 2rem; font-weight: 700; letter-spacing: 2px;
+    background: linear-gradient(135deg, #c8a84b, #e8c96b);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    margin: 10px 0 6px;
+  }
+  .confidence { font-size: 0.78rem; color: #556; margin-bottom: 16px; }
+  .dosha-desc { font-size: 0.88rem; color: #9ab; line-height: 1.6; margin-bottom: 24px; }
+
+  .feat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; text-align: left; }
+  .feat-chip { background: #0f1117; border: 1px solid #2a3260; border-radius: 10px; padding: 9px 12px; }
+  .feat-label { font-size: 0.62rem; text-transform: uppercase; color: #445; margin-bottom: 3px; }
+  .feat-val   { font-size: 0.8rem; color: #c8d0e8; }
+
+  .redo-btn {
+    margin-top: 20px; background: none; border: 1px solid #2a3260;
+    border-radius: 10px; color: #9ab; padding: 10px 24px;
+    font-family: inherit; font-size: 0.85rem; cursor: pointer;
+  }
+  .redo-btn:hover { border-color: #4f7cff; color: #e8edf8; }
+
+  #submit-status { font-size: 0.85rem; color: #9ab; min-height: 18px; margin-top: 10px; text-align: center; }
+  #submit-status.error { color: #f87; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="survey-page" id="surveyPage">
+
+  <!-- Progress -->
+  <div class="progress-wrap" id="progressWrap">
+    <div class="progress-meta">
+      <span id="progressLabel">Question 1 of 12</span>
+      <span id="progressPct">0%</span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+  </div>
+
+  <!-- Question cards -->
+  <div id="cards" style="width:420px;max-width:100%;">
+
+    <div class="q-card active" data-key="Body Weight">
+      <div class="q-number">Question 1 of 12</div>
+      <div class="q-text">How would you describe your body weight?</div>
+      <div class="q-hint">Think about your lifelong tendency, not recent changes</div>
+      <div class="options">
+        <button class="opt-btn" data-value="Low - difficulties in gaining weight">I struggle to gain weight — I stay slim no matter what I eat</button>
+        <button class="opt-btn" data-value="Moderate - no difficulties in gaining or losing weight">My weight stays fairly stable — I can gain or lose with effort</button>
+        <button class="opt-btn" data-value="Heavy - difficulties in losing weight">I gain weight easily and find it hard to lose</button>
+      </div>
+      <div class="nav-row">
+        <button class="nav-btn" disabled>← Back</button>
+        <button class="next-btn" disabled>Next →</button>
+      </div>
+    </div>
+
+    <div class="q-card" data-key="Appetite">
+      <div class="q-number">Question 2 of 12</div>
+      <div class="q-text">How is your appetite generally?</div>
+      <div class="q-hint">Not about current diet — your natural hunger pattern</div>
+      <div class="options">
+        <button class="opt-btn" data-value="Irregular, Scanty">Irregular and small — I often forget to eat or feel little hunger</button>
+        <button class="opt-btn" data-value="Strong, Unbearable">Strong and urgent — I get very uncomfortable if I skip meals</button>
+        <button class="opt-btn" data-value="Slow but steady">Slow and steady — I can go without food comfortably</button>
+      </div>
+      <div class="nav-row">
+        <button class="nav-btn">← Back</button>
+        <button class="next-btn" disabled>Next →</button>
+      </div>
+    </div>
+
+    <div class="q-card" data-key="Bone Structure">
+      <div class="q-number">Question 3 of 12</div>
+      <div class="q-text">How would you describe your bone structure?</div>
+      <div class="q-hint">Feel your wrist or collarbone for a reference</div>
+      <div class="options">
+        <button class="opt-btn" data-value="Light, Small bones, prominent joints">Light and small — my joints are prominent and visible</button>
+        <button class="opt-btn" data-value="Medium bone structure">Medium — neither very delicate nor very heavy</button>
+        <button class="opt-btn" data-value="Large, broad shoulders , heavy bone structure">Large and broad — heavy frame, wide shoulders</button>
+      </div>
+      <div class="nav-row">
+        <button class="nav-btn">← Back</button>
+        <button class="next-btn" disabled>Next →</button>
+      </div>
+    </div>
+
+    <div class="q-card" data-key="Appearance of Hair">
+      <div class="q-number">Question 4 of 12</div>
+      <div class="q-text">What best describes your natural hair?</div>
+      <div class="q-hint">Before any treatments or products</div>
+      <div class="options">
+        <button class="opt-btn" data-value="Dry, black, knotted, brittle">Dry, brittle and prone to tangles or breakage</button>
+        <button class="opt-btn" data-value="Straight, oily">Straight and naturally oily or greasy</button>
+        <button class="opt-btn" data-value="Thick, curly">Thick, curly or wavy and lustrous</button>
+      </div>
+      <div class="nav-row">
+        <button class="nav-btn">← Back</button>
+        <button class="next-btn" disabled>Next →</button>
+      </div>
+    </div>
+
+    <div class="q-card" data-key="Body Size">
+      <div class="q-number">Question 5 of 12</div>
+      <div class="q-text">How would you describe your overall body frame?</div>
+      <div class="q-hint">Your natural build, not current fitness level</div>
+      <div class="options">
+        <button class="opt-btn" data-value="Slim">Slim and lean — I've always been on the thinner side</button>
+        <button class="opt-btn" data-value="Medium">Medium — average build, not too slim or heavy</button>
+        <button class="opt-btn" data-value="Large">Large — naturally big or stocky build</button>
+      </div>
+      <div class="nav-row">
+        <button class="nav-btn">← Back</button>
+        <button class="next-btn" disabled>Next →</button>
+      </div>
+    </div>
+
+    <div class="q-card" data-key="Teeth and gums">
+      <div class="q-number">Question 6 of 12</div>
+      <div class="q-text">How would you describe your teeth and gums?</div>
+      <div class="options">
+        <button class="opt-btn" data-value="Irregular, Protruding teeth, Receding gums">Irregular or protruding teeth, gums tend to recede</button>
+        <button class="opt-btn" data-value="Medium-sized teeth, Reddish gums">Medium teeth, gums are pinkish-red</button>
+        <button class="opt-btn" data-value="Big, White, Strong teeth, Healthy gums">Large, white and strong teeth with healthy gums</button>
+      </div>
+      <div class="nav-row">
+        <button class="nav-btn">← Back</button>
+        <button class="next-btn" disabled>Next →</button>
+      </div>
+    </div>
+
+    <div class="q-card" data-key="Nails">
+      <div class="q-number">Question 7 of 12</div>
+      <div class="q-text">What do your nails look like naturally?</div>
+      <div class="options">
+        <button class="opt-btn" data-value="Dry, Rough, Brittle, Break">Dry, rough and they break or chip easily</button>
+        <button class="opt-btn" data-value="Sharp, Flexible, Pink, Lustrous">Pink, flexible and have a natural sheen</button>
+        <button class="opt-btn" data-value="Thick, Oily, Smooth, Polished">Thick, smooth and naturally polished-looking</button>
+      </div>
+      <div class="nav-row">
+        <button class="nav-btn">← Back</button>
+        <button class="next-btn" disabled>Next →</button>
+      </div>
+    </div>
+
+    <div class="q-card" data-key="General feel of skin">
+      <div class="q-number">Question 8 of 12</div>
+      <div class="q-text">How does your skin feel to the touch?</div>
+      <div class="q-hint">Without any moisturizer or products applied</div>
+      <div class="options">
+        <button class="opt-btn" data-value="Dry and thin, cool to touch, rough">Dry, thin and cool — often rough or flaky</button>
+        <button class="opt-btn" data-value="Smooth and warm, oily T-zone">Warm and smooth — oily in the T-zone</button>
+        <button class="opt-btn" data-value="Thick and moist/greasy, cold">Thick, moist or greasy — feels cool or clammy</button>
+      </div>
+      <div class="nav-row">
+        <button class="nav-btn">← Back</button>
+        <button class="next-btn" disabled>Next →</button>
+      </div>
+    </div>
+
+    <div class="q-card" data-key="Height">
+      <div class="q-number">Question 9 of 12</div>
+      <div class="q-text">What is your height relative to others of your age?</div>
+      <div class="options">
+        <button class="opt-btn" data-value="Short">Shorter than most</button>
+        <button class="opt-btn" data-value="Average">About average</button>
+        <button class="opt-btn" data-value="Tall">Taller than most</button>
+      </div>
+      <div class="nav-row">
+        <button class="nav-btn">← Back</button>
+        <button class="next-btn" disabled>Next →</button>
+      </div>
+    </div>
+
+    <div class="q-card" data-key="Texture of Skin">
+      <div class="q-number">Question 10 of 12</div>
+      <div class="q-text">Which best describes your skin's texture and tendencies?</div>
+      <div class="options">
+        <button class="opt-btn" data-value="Dry, pigments and aging">Dry, with pigmentation or visible signs of early aging</button>
+        <button class="opt-btn" data-value="Freckles, many moles, redness and rashes">Prone to freckles, moles, redness or rashes</button>
+        <button class="opt-btn" data-value="Oily">Oily — pores are visible, skin looks shiny</button>
+      </div>
+      <div class="nav-row">
+        <button class="nav-btn">← Back</button>
+        <button class="next-btn" disabled>Next →</button>
+      </div>
+    </div>
+
+    <div class="q-card" data-key="Hair Color">
+      <div class="q-number">Question 11 of 12</div>
+      <div class="q-text">What is your natural hair color?</div>
+      <div class="options">
+        <button class="opt-btn" data-value="Black/Brown,dull">Black or dark brown — tends to look dull</button>
+        <button class="opt-btn" data-value="Red, light brown, yellow">Red, light brown, blonde or yellowish</button>
+        <button class="opt-btn" data-value="Brown">Rich medium brown with natural shine</button>
+      </div>
+      <div class="nav-row">
+        <button class="nav-btn">← Back</button>
+        <button class="next-btn" disabled>Next →</button>
+      </div>
+    </div>
+
+    <div class="q-card" data-key="Liking tastes">
+      <div class="q-number">Question 12 of 12</div>
+      <div class="q-text">Which flavors do you naturally crave most?</div>
+      <div class="q-hint">What your body draws you towards — not what you think is healthy</div>
+      <div class="options">
+        <button class="opt-btn" data-value="Sweet / Sour / Salty">Sweet, sour or salty foods</button>
+        <button class="opt-btn" data-value="Pungent / Bitter / Astringent">Spicy, bitter or astringent foods</button>
+        <button class="opt-btn" data-value="Sweet / Bitter / Astringent">Sweet, bitter or light / dry foods</button>
+      </div>
+      <div class="nav-row">
+        <button class="nav-btn">← Back</button>
+        <button class="submit-btn" disabled>Reveal Prakriti →</button>
+      </div>
+    </div>
+
+  </div><!-- /cards -->
+
+  <div id="submit-status"></div>
+
+  <!-- Result -->
+  <div id="result-section">
+    <div class="dosha-card">
+      <div class="result-label">Your Prakriti (Dosha) is</div>
+      <div class="dosha-name" id="doshaName"></div>
+      <div class="confidence" id="confidenceEl"></div>
+      <div class="dosha-desc" id="doshaDesc"></div>
+      <div class="feat-grid" id="featGrid"></div>
+    </div>
+    <button class="redo-btn" onclick="location.href='/prakriti'">← Redo Assessment</button>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const TOTAL = 12;
+const answers = {};
+
+const DOSHA_DESC = {
+  "Vata":        "Creative, energetic and quick-thinking. You thrive with warm, grounding routines and regular meals. Watch for anxiety, dryness and restlessness.",
+  "Pitta":       "Focused, sharp and naturally driven. You have a strong metabolism and sharp intellect. Be mindful of overheating, irritability and overworking.",
+  "Kapha":       "Calm, nurturing and physically strong. You have great endurance and loyalty. Staying active and avoiding heaviness keeps you at your best.",
+  "vata+pitta":  "A sharp, creative dual type. Your mind is quick and your drive is strong — balance both with cooling, grounding practices and regular rest.",
+  "pitta+kapha": "Determined and resilient with great stamina. You combine fiery drive with earthy endurance — watch for excess heat and sluggishness.",
+  "vata+kapha":  "A unique blend of lightness and groundedness. Irregular energy is common — consistent routines and warming foods help you thrive.",
+};
+
+const cards = document.querySelectorAll(".q-card");
+
+function getCard(index) { return cards[index]; }
+function currentIndex() { return [...cards].findIndex(c => c.classList.contains("active")); }
+
+function updateProgress(idx) {
+  const pct = Math.round((idx / TOTAL) * 100);
+  document.getElementById("progressFill").style.width  = pct + "%";
+  document.getElementById("progressLabel").textContent = `Question ${idx+1} of ${TOTAL}`;
+  document.getElementById("progressPct").textContent   = pct + "%";
+}
+
+function goTo(idx) {
+  cards.forEach(c => c.classList.remove("active"));
+  cards[idx].classList.add("active");
+  updateProgress(idx);
+  // restore selected state
+  const key = cards[idx].dataset.key;
+  if (answers[key]) {
+    cards[idx].querySelectorAll(".opt-btn").forEach(b => {
+      b.classList.toggle("selected", b.dataset.value === answers[key]);
+    });
+    enableNext(cards[idx]);
+  }
+}
+
+function enableNext(card) {
+  const btn = card.querySelector(".next-btn, .submit-btn");
+  if (btn) btn.disabled = false;
+}
+
+// Wire up option clicks
+cards.forEach((card, i) => {
+  card.querySelectorAll(".opt-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      card.querySelectorAll(".opt-btn").forEach(b => b.classList.remove("selected"));
+      btn.classList.add("selected");
+      answers[card.dataset.key] = btn.dataset.value;
+      enableNext(card);
+    });
+  });
+
+  // Back button
+  const backBtn = card.querySelector(".nav-btn");
+  if (backBtn && i > 0) {
+    backBtn.addEventListener("click", () => goTo(i - 1));
+  }
+
+  // Next button
+  const nextBtn = card.querySelector(".next-btn");
+  if (nextBtn) {
+    nextBtn.addEventListener("click", () => {
+      if (i < cards.length - 1) goTo(i + 1);
+    });
+  }
+
+  // Submit button
+  const submitBtn = card.querySelector(".submit-btn");
+  if (submitBtn) {
+    submitBtn.addEventListener("click", submitSurvey);
+  }
+});
+
+// Init progress
+updateProgress(0);
+
+async function submitSurvey() {
+  const faceFeatures = JSON.parse(sessionStorage.getItem("faceFeatures") || "{}");
+  const payload = { ...faceFeatures, ...answers };
+
+  document.querySelector(".submit-btn").disabled = true;
+  setSubmitStatus("Predicting your Prakriti…");
+
+  try {
+    const res  = await fetch("/predict", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) { setSubmitStatus(data.error || "Prediction failed", true); return; }
+    showResult(data, payload);
+  } catch(e) {
+    setSubmitStatus("Server error: " + e.message, true);
+    document.querySelector(".submit-btn").disabled = false;
+  }
+}
+
+function showResult(data, allFeatures) {
+  document.getElementById("progressWrap").style.display = "none";
+  document.getElementById("cards").style.display = "none";
+  document.getElementById("submit-status").style.display = "none";
+
+  document.getElementById("doshaName").textContent = data.dosha;
+  document.getElementById("confidenceEl").textContent = `${data.confidence}% confidence`;
+  document.getElementById("doshaDesc").textContent = DOSHA_DESC[data.dosha] || "";
+
+  const grid = document.getElementById("featGrid");
+  grid.innerHTML = "";
+  const labels = {
+    "Shape of face": "Face Shape", "Eyes": "Eyes", "Cheeks": "Cheeks",
+    "Nose": "Nose", "Lips": "Lips", "Complexion": "Complexion",
+    "Eyelashes": "Eyelashes", "Blinking of Eyes": "Eye Blinking",
+    "Body Weight": "Body Weight", "Appetite": "Appetite",
+    "Bone Structure": "Bone Structure", "Appearance of Hair": "Hair",
+    "Body Size": "Body Size", "Teeth and gums": "Teeth & Gums",
+    "Nails": "Nails", "General feel of skin": "Skin Feel",
+    "Height": "Height", "Texture of Skin": "Skin Texture",
+    "Hair Color": "Hair Color", "Liking tastes": "Taste Craving",
+  };
+  for (const [k, v] of Object.entries(allFeatures)) {
+    if (!v) continue;
+    grid.innerHTML += `<div class="feat-chip">
+      <div class="feat-label">${labels[k] || k}</div>
+      <div class="feat-val">${v}</div>
+    </div>`;
+  }
+
+  document.getElementById("result-section").style.display = "block";
+  document.getElementById("result-section").scrollIntoView({ behavior: "smooth" });
+}
+
+function setSubmitStatus(msg, isError=false) {
+  const el = document.getElementById("submit-status");
+  el.textContent = msg;
+  el.className = isError ? "error" : "";
+}
+</script>
+{% endblock %}
