@@ -11,6 +11,17 @@ from flask import request
 from flask import jsonify
 
 from Prakriti_assessment.vision_model.face_features import _extract
+from storage import save_assessment, get_all, delete_assessment, get_latest
+
+DISEASE_MODEL_PATH = Path(__file__).parent / "Diagnosis" / "predictor" / "disease_model.pkl"
+with open(DISEASE_MODEL_PATH, "rb") as f:
+    _disease_model = pickle.load(f)
+
+DOSHA_PREDISPOSITION = {
+    "Vata":  {"Arthritis": 0.15, "Migraine": 0.10},
+    "Pitta": {"Gastritis": 0.15, "Migraine": 0.10},
+    "Kapha": {"Diarrhea":  0.10, "Arthritis": 0.08},
+}
 
 app = Flask(__name__)
 
@@ -31,6 +42,25 @@ def prakriti():
 @app.route('/survey')
 def survey():
     return render_template('survey.html')
+
+
+@app.route('/disease')
+def disease():
+    latest = get_latest()
+    dosha  = latest['dosha'] if latest else None
+    return render_template('disease.html', dosha=dosha)
+
+@app.route('/wellness')
+def wellness():
+    latest = get_latest()
+    dosha  = latest['dosha'] if latest else None
+    return render_template('wellness.html', dosha=dosha, latest=latest)
+
+
+@app.route('/profile')
+def profile():
+    records = get_all()
+    return render_template('profile.html', records=records)
 
 
 @app.route('/analyze', methods=['POST'])
@@ -85,17 +115,51 @@ def predict():
     return jsonify({"dosha": dosha, "confidence": confidence})
 
 
-@app.route('/disease')
-def disease():
-    return "<h1>Disease Detection Page</h1>"
+@app.route('/diagnose', methods=['POST'])
+def diagnose():
+    data        = request.json
+    symptoms    = data.get("symptoms", [])
+    severity    = data.get("severity", "LOW").upper()
+    dosha_raw   = data.get("dosha", "")
 
-@app.route('/wellness')
-def wellness():
-    return "<h1>General Wellness Page</h1>"
+    clf          = _disease_model['clf']
+    le           = _disease_model['label_enc']
+    sym_cols     = _disease_model['symptom_cols']
+    drug_lookup  = _disease_model['drug_lookup']
 
-@app.route('/profile')
-def profile():
-    return "<h1>User Profile Page</h1>"
+    # Build feature vector
+    vec = [1 if s in symptoms else 0 for s in sym_cols]
+
+    # Base probabilities from model
+    proba = clf.predict_proba([vec])[0].copy()
+    classes = list(le.classes_)
+
+    # Apply dosha weighting
+    primary = dosha_raw.split('+')[0].capitalize() if dosha_raw else ""
+    boosts  = DOSHA_PREDISPOSITION.get(primary, {})
+    for disease, boost in boosts.items():
+        if disease in classes:
+            proba[classes.index(disease)] += boost
+
+    # Normalize and predict
+    proba = proba / proba.sum()
+    pred_idx = int(proba.argmax())
+    disease  = classes[pred_idx]
+    confidence = round(float(proba[pred_idx]) * 100, 1)
+
+    # Get medicines
+    key = (disease.lower(), severity)
+    medicines = drug_lookup.get(key, drug_lookup.get((disease.lower(), "NORMAL"), []))[:6]
+
+    return jsonify({"disease": disease, "confidence": confidence, "medicines": medicines})
+
+
+@app.route('/profile/delete/<record_id>', methods=['POST'])
+def delete_record(record_id):
+    ok = delete_assessment(record_id)
+    return jsonify({"ok": ok})
+
 
 if __name__ == '__main__':
     app.run(debug = True)
+    

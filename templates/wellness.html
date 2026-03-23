@@ -1,0 +1,287 @@
+{% extends "base.html" %}
+{% block title %}General Wellness — VedaPath{% endblock %}
+
+{% block styles %}
+<style>
+  .page { max-width: 740px; margin: 0 auto; padding: 40px 20px 60px; }
+  h1 { margin-bottom: 4px; }
+  .subtitle { color: #556; font-size: 0.88rem; margin-bottom: 8px; }
+
+  .no-dosha {
+    text-align:center; padding:60px 20px; color:#445;
+    border:1px dashed #2a3260; border-radius:16px;
+  }
+  .no-dosha a {
+    display:inline-block; margin-top:16px; background:#4f7cff;
+    color:#fff; text-decoration:none; padding:10px 24px; border-radius:10px; font-size:0.88rem;
+  }
+
+  .dosha-banner {
+    display:flex; align-items:center; gap:16px;
+    background:#1a1e2e; border:1px solid #2a3260; border-radius:14px;
+    padding:18px 22px; margin-bottom:28px;
+  }
+  .dosha-badge {
+    font-size:1.3rem; font-weight:700; letter-spacing:1px;
+    background:linear-gradient(135deg,#c8a84b,#e8c96b);
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+    white-space:nowrap;
+  }
+  .dosha-banner-desc { font-size:0.83rem; color:#9ab; line-height:1.5; }
+
+  /* tabs */
+  .tabs { display:flex; gap:8px; margin-bottom:24px; }
+  .tab-btn {
+    background:#1a1e2e; border:1px solid #2a3260; border-radius:10px;
+    color:#9ab; padding:9px 20px; font-size:0.85rem; font-family:inherit;
+    cursor:pointer; transition:border-color 0.2s, color 0.2s, background 0.2s;
+  }
+  .tab-btn.active { border-color:#c8a84b; color:#c8a84b; background:#1f1a0e; }
+
+  .tab-panel { display:none; }
+  .tab-panel.active { display:block; animation:fadeIn 0.25s ease; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+
+  .section-title {
+    font-size:0.68rem; text-transform:uppercase; letter-spacing:1px;
+    color:#c8a84b; margin:24px 0 12px; border-bottom:1px solid #2a3260; padding-bottom:5px;
+  }
+
+  /* item cards */
+  .item-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  @media(max-width:500px){ .item-grid{grid-template-columns:1fr;} }
+  .item-card {
+    background:#1a1e2e; border:1px solid #2a3260; border-radius:12px; padding:14px 16px;
+  }
+  .item-icon { font-size:1.3rem; margin-bottom:6px; }
+  .item-title { font-size:0.88rem; color:#e8edf8; font-weight:600; margin-bottom:4px; }
+  .item-desc  { font-size:0.78rem; color:#778; line-height:1.5; }
+
+  /* food tags */
+  .tag-group { margin-bottom:16px; }
+  .tag-label { font-size:0.72rem; color:#9ab; margin-bottom:8px; }
+  .tags { display:flex; flex-wrap:wrap; gap:7px; }
+  .tag {
+    padding:5px 12px; border-radius:20px; font-size:0.78rem;
+    background:#0f1117; border:1px solid #2a3260; color:#c8d0e8;
+  }
+  .tag.good  { border-color:#2a5c3a; color:#4ade80; background:#0a1f12; }
+  .tag.avoid { border-color:#5c2a2a; color:#f87171; background:#1f0a0a; }
+  .tag.mod   { border-color:#5c4a2a; color:#fbbf24; background:#1f160a; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page">
+  <h1>General Wellness</h1>
+
+  {% if not dosha %}
+  <div class="no-dosha">
+    <div style="font-size:2rem; margin-bottom:12px;">🌿</div>
+    <div style="color:#9ab;">No Prakriti result found.</div>
+    <div style="font-size:0.82rem; margin-top:6px;">Complete the assessment first to get personalised wellness guidance.</div>
+    <a href="/prakriti">Start Assessment →</a>
+  </div>
+
+  {% else %}
+  <p class="subtitle">Personalised recommendations based on your Prakriti</p>
+
+  <div class="dosha-banner">
+    <div class="dosha-badge">{{ dosha }}</div>
+    <div class="dosha-banner-desc" id="doshaDesc"></div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="showTab('diet', this)">🥗 Diet</button>
+    <button class="tab-btn" onclick="showTab('lifestyle', this)">🌙 Lifestyle</button>
+    <button class="tab-btn" onclick="showTab('yoga', this)">🧘 Yoga & Exercise</button>
+  </div>
+
+  <div class="tab-panel active" id="tab-diet">
+    <div id="dietContent"></div>
+  </div>
+
+  <div class="tab-panel" id="tab-lifestyle">
+    <div id="lifestyleContent"></div>
+  </div>
+
+  <div class="tab-panel" id="tab-yoga">
+    <div id="yogaContent"></div>
+  </div>
+
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if dosha %}
+<script>
+const DOSHA = "{{ dosha }}";
+
+const DATA = {
+  "Vata": {
+    desc: "Vata types are governed by air and space. You tend to be creative and quick, but prone to dryness, anxiety, and irregularity. Warmth, routine, and nourishment are your medicine.",
+    diet: {
+      principle: "Favour warm, oily, heavy, and sweet foods. Eat at regular times. Avoid cold, raw, and dry foods.",
+      good:  ["Warm milk","Ghee","Rice","Sesame oil","Root vegetables","Dates","Almonds","Oats (cooked)","Sweet potato","Avocado","Ginger tea","Cardamom"],
+      avoid: ["Cold drinks","Raw salads","Dry crackers","Popcorn","Beans (excess)","Caffeine","Carbonated drinks"],
+      mod:   ["Caffeine","Raw fruits","Light grains (barley)"],
+      meals: [
+        {icon:"☀️", title:"Breakfast", desc:"Warm oatmeal with ghee, dates, and cardamom. Avoid skipping breakfast — Vata types need grounding in the morning."},
+        {icon:"🌤️", title:"Lunch",     desc:"Your largest meal. Rice with lentils, cooked vegetables, and a teaspoon of ghee. Eat slowly and mindfully."},
+        {icon:"🌙", title:"Dinner",    desc:"Light but warm — soups, khichdi, or soft grains. Eat at least 2 hours before bed."},
+      ]
+    },
+    lifestyle: [
+      {icon:"⏰", title:"Consistent routine",       desc:"Vata is pacified by regularity. Wake, eat, and sleep at the same time daily — this is the single most effective change you can make."},
+      {icon:"🛁", title:"Warm oil self-massage",     desc:"Daily Abhyanga (self-massage) with sesame oil before bathing calms the nervous system and counters dryness."},
+      {icon:"🌡️", title:"Stay warm",                desc:"Vata types lose heat quickly. Layer clothing, avoid cold winds, and prefer warm environments."},
+      {icon:"😴", title:"Prioritise sleep",          desc:"Aim to be in bed by 10 PM. Use warm milk with nutmeg before bed to settle a busy Vata mind."},
+      {icon:"📵", title:"Reduce stimulation",        desc:"Limit screens, loud music, and multitasking. Vata thrives on calm, focused environments."},
+      {icon:"💧", title:"Stay hydrated",             desc:"Drink warm water and herbal teas throughout the day. Cold water aggravates Vata."},
+    ],
+    yoga: [
+      {icon:"🧘", title:"Grounding asanas",    desc:"Favour slow, steady poses: Tadasana, Virabhadrasana I, Balasana, Shavasana. Hold poses longer."},
+      {icon:"🌬️", title:"Pranayama",           desc:"Nadi Shodhana (alternate nostril breathing) for 10 minutes daily calms Vata's erratic energy."},
+      {icon:"🚶", title:"Gentle walks",         desc:"30-minute walks in nature, ideally in the morning. Avoid high-intensity cardio which depletes Vata."},
+      {icon:"🏊", title:"Swimming",             desc:"Warm-water swimming is excellent — it is grounding and avoids the drying effect of most exercises."},
+    ]
+  },
+
+  "Pitta": {
+    desc: "Pitta types are governed by fire and water. You are sharp, driven, and focused, but can be prone to inflammation, irritability, and burnout. Cooling and moderation are your allies.",
+    diet: {
+      principle: "Favour cool, sweet, bitter, and astringent foods. Avoid spicy, sour, and fried foods. Do not skip meals — Pitta hunger is intense.",
+      good:  ["Coconut water","Cucumber","Coriander","Basmati rice","Sweet fruits","Mint","Fennel","Pomegranate","Leafy greens","Ghee","Lime","Sunflower seeds"],
+      avoid: ["Chilli","Vinegar","Alcohol","Sour cream","Fried foods","Tomatoes (excess)","Caffeine (excess)","Red meat"],
+      mod:   ["Salt","Eggs","Fermented foods","Citrus fruits"],
+      meals: [
+        {icon:"☀️", title:"Breakfast", desc:"Coconut yoghurt with sweet fruits, or oats with cardamom and rose water. Avoid skipping — Pitta does not handle hunger well."},
+        {icon:"🌤️", title:"Lunch",     desc:"Eat your largest meal at midday when digestive fire peaks. Basmati rice, lentils, cooked greens with ghee and coriander."},
+        {icon:"🌙", title:"Dinner",    desc:"Light and early. Vegetable soup, kitchari, or salads at room temperature. Avoid eating after 7 PM."},
+      ]
+    },
+    lifestyle: [
+      {icon:"❄️", title:"Cool your environment",    desc:"Pitta generates heat. Work in cool spaces, take cool (not cold) showers, and avoid direct midday sun."},
+      {icon:"🌿", title:"Coconut oil massage",      desc:"Replace sesame with cooling coconut oil for Abhyanga. Focus on the scalp to reduce mental heat."},
+      {icon:"😤", title:"Manage competitiveness",   desc:"Pitta can tip into perfectionism and irritability. Build in rest breaks and practise letting go of outcomes."},
+      {icon:"🌸", title:"Time in nature",           desc:"Cool, green environments — forests, rivers — are deeply restorative for Pitta. Spend time outdoors in early morning or evening."},
+      {icon:"😴", title:"Protect sleep",            desc:"Pitta types often push late into the night working. Commit to sleeping by 10–11 PM; this prevents Pitta midnight wakefulness."},
+      {icon:"🎨", title:"Creative outlets",         desc:"Channel Pitta's intensity into creative projects, music, or art. This prevents it from turning into frustration."},
+    ],
+    yoga: [
+      {icon:"🧘", title:"Cooling asanas",        desc:"Moon salutations, forward folds, twists, and Shavasana. Avoid hot yoga or competitive practice."},
+      {icon:"🌬️", title:"Sheetali Pranayama",    desc:"Breathing through a curled tongue cools body and mind. Practise 5–10 minutes when feeling hot or irritable."},
+      {icon:"🏊", title:"Swimming",              desc:"Excellent for Pitta — water cools, and the rhythmic movement settles mental intensity."},
+      {icon:"🚴", title:"Moderate cycling",      desc:"Easy to moderate cycling in cool morning air. Avoid overheating during exercise."},
+    ]
+  },
+
+  "Kapha": {
+    desc: "Kapha types are governed by earth and water. You are strong, calm, and enduring, but prone to sluggishness, weight gain, and attachment. Stimulation and movement keep you balanced.",
+    diet: {
+      principle: "Favour light, dry, warm, and spicy foods. Avoid heavy, sweet, and oily foods. Eat smaller portions and avoid snacking.",
+      good:  ["Ginger","Turmeric","Honey","Legumes","Light grains","Apples","Pears","Leafy greens","Mustard seeds","Peppers","Green tea","Pomegranate"],
+      avoid: ["Dairy (excess)","Fried foods","Heavy desserts","White flour","Bananas","Avocado (excess)","Cold foods","Excess oil"],
+      mod:   ["Nuts","Ghee","Natural sweeteners","Wheat"],
+      meals: [
+        {icon:"☀️", title:"Breakfast", desc:"Kapha types can often skip breakfast or have something very light — ginger tea with lemon, or a small portion of dry fruit."},
+        {icon:"🌤️", title:"Lunch",     desc:"Your main meal. Spiced lentil soup, barley, lightly cooked vegetables. Use mustard seeds and ginger to kindle digestion."},
+        {icon:"🌙", title:"Dinner",    desc:"Very light and early — before 6:30 PM if possible. Vegetable broth or a small salad with lemon and pepper."},
+      ]
+    },
+    lifestyle: [
+      {icon:"⏰", title:"Wake early",                desc:"Rise before 6 AM — the Kapha time of day (6–10 AM) brings heaviness if slept through. Early rising gives you energy."},
+      {icon:"🏃", title:"Daily vigorous exercise",   desc:"Kapha needs movement more than any other type. 45–60 minutes of brisk walking, running, or strength training daily."},
+      {icon:"🌶️", title:"Stimulate your senses",    desc:"Use invigorating scents (eucalyptus, camphor), bright colours, and upbeat music. Kapha benefits from sensory stimulation."},
+      {icon:"🧴", title:"Dry brushing",              desc:"Vigorous dry brushing before a warm shower stimulates the lymphatic system and counters Kapha stagnation."},
+      {icon:"👥", title:"Stay social",              desc:"Kapha types can withdraw and become isolated. Actively schedule time with friends and communities."},
+      {icon:"🆕", title:"Embrace change",           desc:"Kapha resists change and clings to routine. Deliberately try new things — new routes, foods, hobbies. This keeps energy flowing."},
+    ],
+    yoga: [
+      {icon:"🔥", title:"Sun salutations",      desc:"Fast-paced Surya Namaskar sequences in the morning activate Kapha's sluggish energy. Aim for 10+ rounds."},
+      {icon:"🌬️", title:"Bhastrika Pranayama", desc:"Bellows breath — rapid, forceful breathing — generates internal heat and clears Kapha heaviness. 3–5 minutes daily."},
+      {icon:"🏃", title:"Running or HIIT",      desc:"Unlike other doshas, Kapha thrives with vigorous exercise. Running, cycling, and high-intensity intervals are ideal."},
+      {icon:"🤸", title:"Inversion poses",      desc:"Headstands, shoulder stands, and downward dog shift fluid and counter Kapha congestion."},
+    ]
+  }
+};
+
+// Handle dual doshas by averaging/merging
+function resolveDosha(raw) {
+  if (DATA[raw]) return raw;
+  // dual — pick the first named dosha that exists
+  const parts = raw.toLowerCase().split('+');
+  for (const p of parts) {
+    const key = p.charAt(0).toUpperCase() + p.slice(1);
+    if (DATA[key]) return key;
+  }
+  return null;
+}
+
+const key = resolveDosha(DOSHA);
+const d   = key ? DATA[key] : null;
+
+if (d) {
+  document.getElementById('doshaDesc').textContent = d.desc;
+
+  // Diet tab
+  document.getElementById('dietContent').innerHTML = `
+    <div class="section-title">Dietary Principle</div>
+    <div style="background:#1a1e2e;border:1px solid #2a3260;border-radius:12px;padding:14px 18px;font-size:0.85rem;color:#9ab;line-height:1.6;margin-bottom:16px;">${d.diet.principle}</div>
+
+    <div class="section-title">Foods at a Glance</div>
+    <div class="tag-group">
+      <div class="tag-label">✅ Favour</div>
+      <div class="tags">${d.diet.good.map(f=>`<span class="tag good">${f}</span>`).join('')}</div>
+    </div>
+    <div class="tag-group">
+      <div class="tag-label">⚠️ Moderate</div>
+      <div class="tags">${d.diet.mod.map(f=>`<span class="tag mod">${f}</span>`).join('')}</div>
+    </div>
+    <div class="tag-group">
+      <div class="tag-label">❌ Avoid</div>
+      <div class="tags">${d.diet.avoid.map(f=>`<span class="tag avoid">${f}</span>`).join('')}</div>
+    </div>
+
+    <div class="section-title">Meal Guide</div>
+    <div class="item-grid">${d.diet.meals.map(m=>`
+      <div class="item-card">
+        <div class="item-icon">${m.icon}</div>
+        <div class="item-title">${m.title}</div>
+        <div class="item-desc">${m.desc}</div>
+      </div>`).join('')}</div>
+  `;
+
+  // Lifestyle tab
+  document.getElementById('lifestyleContent').innerHTML = `
+    <div class="section-title">Daily Practices</div>
+    <div class="item-grid">${d.lifestyle.map(l=>`
+      <div class="item-card">
+        <div class="item-icon">${l.icon}</div>
+        <div class="item-title">${l.title}</div>
+        <div class="item-desc">${l.desc}</div>
+      </div>`).join('')}</div>
+  `;
+
+  // Yoga tab
+  document.getElementById('yogaContent').innerHTML = `
+    <div class="section-title">Recommended Practices</div>
+    <div class="item-grid">${d.yoga.map(y=>`
+      <div class="item-card">
+        <div class="item-icon">${y.icon}</div>
+        <div class="item-title">${y.title}</div>
+        <div class="item-desc">${y.desc}</div>
+      </div>`).join('')}</div>
+  `;
+}
+
+function showTab(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  btn.classList.add('active');
+}
+</script>
+{% endif %}
+{% endblock %}

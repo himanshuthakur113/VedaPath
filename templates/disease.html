@@ -1,0 +1,486 @@
+{% extends "base.html" %}
+{% block title %}Disease Detection — VedaPath{% endblock %}
+
+{% block styles %}
+<style>
+  .page { max-width: 760px; margin: 0 auto; padding: 40px 20px 60px; }
+  h1 { margin-bottom: 4px; }
+  .subtitle { color: #556; font-size: 0.88rem; margin-bottom: 28px; }
+
+  .dosha-ctx {
+    display: flex; align-items: center; gap: 12px;
+    background: #1a1e2e; border: 1px solid #2a3260; border-radius: 12px;
+    padding: 14px 18px; margin-bottom: 24px; font-size: 0.83rem;
+  }
+  .dosha-pill {
+    padding: 4px 14px; border-radius: 20px; font-weight: 700; font-size: 0.82rem;
+    background: linear-gradient(135deg,#c8a84b,#e8c96b); color: #0f1117; white-space: nowrap;
+  }
+  .notice {
+    background: #1a1e2e; border: 1px solid #2a3260; border-radius: 12px;
+    padding: 14px 18px; margin-bottom: 20px; font-size: 0.83rem; color: #9ab;
+  }
+  .notice a { color: #4f7cff; }
+
+  /* search */
+  .sym-search-wrap { position: relative; margin-bottom: 16px; }
+  .sym-search {
+    width: 100%; box-sizing: border-box;
+    background: #1a1e2e; border: 1px solid #2a3260; border-radius: 10px;
+    color: #e8edf8; padding: 10px 14px 10px 36px; font-size: 0.88rem; font-family: inherit;
+  }
+  .sym-search:focus { outline: none; border-color: #4f7cff; }
+  .sym-search-icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: #445; font-size: 0.85rem; }
+
+  /* selected count badge */
+  .sel-count {
+    font-size: 0.75rem; color: #9ab; margin-bottom: 10px;
+  }
+  .sel-count span { color: #c8a84b; font-weight: 600; }
+
+  /* category groups */
+  .cat-group { margin-bottom: 18px; }
+  .cat-label {
+    font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1px;
+    color: #c8a84b; margin-bottom: 8px; display: block;
+  }
+  .sym-grid { display: flex; flex-wrap: wrap; gap: 7px; }
+  .sym-btn {
+    background: #0f1117; border: 1px solid #2a3260; border-radius: 8px;
+    color: #778; padding: 6px 12px; font-size: 0.78rem;
+    cursor: pointer; font-family: inherit; white-space: nowrap;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+  }
+  .sym-btn:hover  { border-color: #4f7cff; color: #c8d0e8; }
+  .sym-btn.active { border-color: #c8a84b; background: #1f1a0e; color: #e8c96b; }
+  .sym-btn.hidden { display: none; }
+
+  .section-label {
+    font-size: 0.68rem; text-transform: uppercase; letter-spacing: 1px;
+    color: #c8a84b; margin: 24px 0 12px; border-bottom: 1px solid #2a3260; padding-bottom: 5px;
+  }
+  .severity-row { display: flex; gap: 10px; }
+  .sev-btn {
+    flex: 1; background: #0f1117; border: 1px solid #2a3260; border-radius: 10px;
+    color: #778; padding: 10px; font-size: 0.82rem; text-align: center;
+    cursor: pointer; font-family: inherit;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+  }
+  .sev-btn.active { border-color: #c8a84b; background: #1f1a0e; color: #e8c96b; }
+
+  .analyse-btn {
+    width: 100%; margin-top: 20px; background: #4f7cff; color: #fff;
+    border: none; border-radius: 12px; padding: 13px;
+    font-size: 0.95rem; font-family: inherit; cursor: pointer;
+  }
+  .analyse-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  #status { text-align: center; font-size: 0.83rem; color: #9ab; min-height: 18px; margin-top: 10px; }
+  #status.error { color: #f87; }
+
+  /* result */
+  #result { display: none; margin-top: 32px; }
+  .result-card { background: #1a1e2e; border: 1px solid #2a3260; border-radius: 16px; padding: 28px; }
+  .disease-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+  .disease-name {
+    font-size: 1.6rem; font-weight: 700; line-height: 1.2;
+    background: linear-gradient(135deg,#c8a84b,#e8c96b);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .disease-hindi { font-size: 0.95rem; color: #9ab; margin-top: 3px; }
+  .confidence-badge {
+    background: #0f1117; border: 1px solid #2a3260; border-radius: 8px;
+    padding: 6px 12px; font-size: 0.78rem; color: #556; white-space: nowrap;
+  }
+  .meta-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+  .meta-pill {
+    background: #0f1117; border: 1px solid #2a3260; border-radius: 20px;
+    padding: 4px 12px; font-size: 0.75rem; color: #9ab;
+  }
+  .meta-pill span { color: #c8a84b; }
+  .dosha-note {
+    background: #0f1117; border: 1px solid #2a3260; border-radius: 10px;
+    padding: 12px 16px; font-size: 0.83rem; color: #9ab; margin-bottom: 18px; line-height: 1.5;
+  }
+  .dosha-note strong { color: #c8a84b; }
+  .tabs { display: flex; gap: 8px; margin: 16px 0; flex-wrap: wrap; }
+  .tab-btn {
+    background: #0f1117; border: 1px solid #2a3260; border-radius: 10px;
+    color: #778; padding: 7px 14px; font-size: 0.8rem; font-family: inherit; cursor: pointer;
+    transition: border-color 0.2s, color 0.2s, background 0.2s;
+  }
+  .tab-btn.active { border-color: #c8a84b; color: #c8a84b; background: #1f1a0e; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; animation: fadeIn 0.2s ease; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:none} }
+  .info-box {
+    background: #0f1117; border: 1px solid #2a3260; border-radius: 10px;
+    padding: 14px 16px; font-size: 0.85rem; color: #9ab; line-height: 1.65;
+  }
+  .herb-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .herb-chip {
+    background: #0a1f12; border: 1px solid #2a5c3a; border-radius: 10px;
+    padding: 10px 14px; font-size: 0.82rem; color: #4ade80;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .herb-chip::before { content: "🌿"; }
+  .redo-btn {
+    margin-top: 24px; background: none; border: 1px solid #2a3260;
+    border-radius: 10px; color: #9ab; padding: 10px 20px;
+    font-family: inherit; font-size: 0.85rem; cursor: pointer; width: 100%;
+  }
+  .redo-btn:hover { border-color: #4f7cff; color: #e8edf8; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page">
+  <h1>Disease Detection</h1>
+  <p class="subtitle">Select your symptoms for a diagnosis with full Ayurvedic treatment guidance</p>
+
+  {% if dosha %}
+  <div class="dosha-ctx">
+    <div class="dosha-pill">{{ dosha }}</div>
+    <div style="color:#9ab;font-size:0.83rem;line-height:1.5;">Your Prakriti is factored into the analysis — constitutional predispositions are weighted in the prediction.</div>
+  </div>
+  {% else %}
+  <div class="notice">⚠️ No Prakriti result found. <a href="/prakriti">Complete the assessment</a> for a more accurate diagnosis — or continue without it.</div>
+  {% endif %}
+
+  <div class="section-label">Select all symptoms you are experiencing</div>
+
+  <div class="sym-search-wrap">
+    <span class="sym-search-icon">🔍</span>
+    <input class="sym-search" id="symSearch" placeholder="Search symptoms…" oninput="filterSymptoms(this.value)">
+  </div>
+  <div class="sel-count">Selected: <span id="selCount">0</span> symptoms</div>
+
+  <div id="symptomGroups"></div>
+
+  <div class="section-label">How severe do the symptoms feel?</div>
+  <div class="severity-row">
+    <button class="sev-btn active" data-sev="LOW"    onclick="setSev(this)">🟢 Mild</button>
+    <button class="sev-btn"        data-sev="NORMAL" onclick="setSev(this)">🟡 Moderate</button>
+    <button class="sev-btn"        data-sev="HIGH"   onclick="setSev(this)">🔴 Severe</button>
+  </div>
+
+  <button class="analyse-btn" id="analyseBtn" onclick="analyse()">🔍 Analyse Symptoms</button>
+  <div id="status"></div>
+
+  <div id="result">
+    <div class="result-card">
+      <div class="disease-header">
+        <div>
+          <div class="disease-name" id="diseaseName"></div>
+          <div class="disease-hindi" id="diseaseHindi"></div>
+        </div>
+        <div class="confidence-badge" id="confidenceBadge"></div>
+      </div>
+      <div class="meta-row"  id="metaRow"></div>
+      <div class="dosha-note" id="doshaNote" style="display:none"></div>
+      <div class="tabs">
+        <button class="tab-btn active" onclick="showTab('herbs',this)">🌿 Herbs</button>
+        <button class="tab-btn"        onclick="showTab('diet',this)">🥗 Diet</button>
+        <button class="tab-btn"        onclick="showTab('yoga',this)">🧘 Yoga</button>
+        <button class="tab-btn"        onclick="showTab('prevention',this)">🛡️ Prevention</button>
+      </div>
+      <div class="tab-panel active" id="tab-herbs">
+        <div class="herb-grid" id="herbGrid"></div>
+        <div style="margin-top:12px" id="formulationBox"></div>
+      </div>
+      <div class="tab-panel" id="tab-diet"><div class="info-box" id="dietBox"></div></div>
+      <div class="tab-panel" id="tab-yoga"><div class="info-box" id="yogaBox"></div></div>
+      <div class="tab-panel" id="tab-prevention">
+        <div class="info-box" id="preventionBox"></div>
+        <div style="margin-top:10px" id="prognosisBox"></div>
+      </div>
+      <button class="redo-btn" onclick="resetForm()">← Check different symptoms</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const DOSHA = "{{ dosha or '' }}";
+
+// 131 symptoms grouped by body system
+const SYMPTOM_GROUPS = [
+  { label: "General", symptoms: [
+    {key:"fatigue",label:"Fatigue"},{key:"lethargy",label:"Lethargy"},
+    {key:"malaise",label:"Malaise"},{key:"high_fever",label:"High fever"},
+    {key:"mild_fever",label:"Mild fever"},{key:"chills",label:"Chills"},
+    {key:"sweating",label:"Sweating"},{key:"shivering",label:"Shivering"},
+    {key:"weight_loss",label:"Weight loss"},{key:"weight_gain",label:"Weight gain"},
+    {key:"dehydration",label:"Dehydration"},{key:"restlessness",label:"Restlessness"},
+    {key:"anxiety",label:"Anxiety"},{key:"depression",label:"Depression"},
+    {key:"mood_swings",label:"Mood swings"},{key:"irritability",label:"Irritability"},
+    {key:"lack_of_concentration",label:"Lack of concentration"},
+  ]},
+  { label: "Head & Nervous System", symptoms: [
+    {key:"headache",label:"Headache"},{key:"dizziness",label:"Dizziness"},
+    {key:"loss_of_balance",label:"Loss of balance"},{key:"unsteadiness",label:"Unsteadiness"},
+    {key:"spinning_movements",label:"Spinning / vertigo"},{key:"altered_sensorium",label:"Altered sensorium"},
+    {key:"slurred_speech",label:"Slurred speech"},{key:"coma",label:"Coma"},
+    {key:"blurred_and_distorted_vision",label:"Blurred vision"},
+    {key:"visual_disturbances",label:"Visual disturbances"},
+    {key:"loss_of_smell",label:"Loss of smell"},
+    {key:"pain_behind_the_eyes",label:"Pain behind eyes"},
+    {key:"watering_from_eyes",label:"Watering eyes"},
+    {key:"redness_of_eyes",label:"Red eyes"},
+    {key:"stiff_neck",label:"Stiff neck"},
+    {key:"neck_pain",label:"Neck pain"},
+  ]},
+  { label: "Chest & Heart", symptoms: [
+    {key:"chest_pain",label:"Chest pain"},{key:"breathlessness",label:"Breathlessness"},
+    {key:"palpitations",label:"Palpitations"},{key:"fast_heart_rate",label:"Fast heart rate"},
+    {key:"cough",label:"Cough"},{key:"phlegm",label:"Phlegm"},
+    {key:"mucoid_sputum",label:"Mucoid sputum"},{key:"rusty_sputum",label:"Rusty sputum"},
+    {key:"blood_in_sputum",label:"Blood in sputum"},{key:"congestion",label:"Congestion"},
+    {key:"sinus_pressure",label:"Sinus pressure"},
+  ]},
+  { label: "Stomach & Digestion", symptoms: [
+    {key:"abdominal_pain",label:"Abdominal pain"},{key:"belly_pain",label:"Belly pain"},
+    {key:"stomach_pain",label:"Stomach pain"},{key:"nausea",label:"Nausea"},
+    {key:"vomiting",label:"Vomiting"},{key:"diarrhoea",label:"Diarrhoea"},
+    {key:"constipation",label:"Constipation"},{key:"indigestion",label:"Indigestion"},
+    {key:"acidity",label:"Acidity"},{key:"distention_of_abdomen",label:"Abdominal distension"},
+    {key:"swelling_of_stomach",label:"Stomach swelling"},
+    {key:"stomach_bleeding",label:"Stomach bleeding"},
+    {key:"loss_of_appetite",label:"Loss of appetite"},
+    {key:"increased_appetite",label:"Increased appetite"},
+    {key:"passage_of_gases",label:"Excess gas"},
+    {key:"pain_during_bowel_movements",label:"Pain during bowel movement"},
+    {key:"pain_in_anal_region",label:"Anal pain"},{key:"irritation_in_anus",label:"Anal irritation"},
+    {key:"bloody_stool",label:"Bloody stool"},{key:"acute_liver_failure",label:"Acute liver failure"},
+    {key:"fluid_overload",label:"Fluid overload"},
+  ]},
+  { label: "Liver & Jaundice", symptoms: [
+    {key:"yellowish_skin",label:"Yellowish skin"},{key:"yellowing_of_eyes",label:"Yellow eyes"},
+    {key:"yellow_urine",label:"Yellow urine"},{key:"dark_urine",label:"Dark urine"},
+    {key:"history_of_alcohol_consumption",label:"Alcohol history"},
+    {key:"receiving_blood_transfusion",label:"Blood transfusion history"},
+    {key:"receiving_unsterile_injections",label:"Unsterile injections history"},
+  ]},
+  { label: "Urinary & Kidneys", symptoms: [
+    {key:"burning_micturition",label:"Burning urination"},
+    {key:"bladder_discomfort",label:"Bladder discomfort"},
+    {key:"continuous_feel_of_urine",label:"Constant urge to urinate"},
+    {key:"foul_smell_of urine",label:"Foul smelling urine"},
+    {key:"polyuria",label:"Frequent urination"},
+    {key:"spotting_ urination",label:"Spotting in urine"},
+    {key:"blood_in_sputum",label:"Blood in urine"},
+    {key:"sunken_eyes",label:"Sunken eyes"},
+    {key:"puffy_face_and_eyes",label:"Puffy face/eyes"},
+    {key:"swollen_extremeties",label:"Swollen extremities"},
+    {key:"swollen_legs",label:"Swollen legs"},
+  ]},
+  { label: "Muscles, Joints & Limbs", symptoms: [
+    {key:"joint_pain",label:"Joint pain"},{key:"knee_pain",label:"Knee pain"},
+    {key:"hip_joint_pain",label:"Hip joint pain"},{key:"swelling_joints",label:"Swollen joints"},
+    {key:"painful_walking",label:"Painful walking"},{key:"movement_stiffness",label:"Stiffness"},
+    {key:"muscle_pain",label:"Muscle pain"},{key:"muscle_weakness",label:"Muscle weakness"},
+    {key:"muscle_wasting",label:"Muscle wasting"},{key:"back_pain",label:"Back pain"},
+    {key:"weakness_in_limbs",label:"Limb weakness"},
+    {key:"weakness_of_one_body_side",label:"One-sided weakness"},
+    {key:"loss_of_balance",label:"Balance issues"},
+    {key:"prominent_veins_on_calf",label:"Prominent calf veins"},
+    {key:"swollen_blood_vessels",label:"Swollen blood vessels"},
+    {key:"cold_hands_and_feets",label:"Cold hands/feet"},
+    {key:"cramps",label:"Cramps"},{key:"bruising",label:"Bruising"},
+  ]},
+  { label: "Skin & Hair", symptoms: [
+    {key:"itching",label:"Itching"},{key:"skin_rash",label:"Skin rash"},
+    {key:"nodal_skin_eruptions",label:"Skin eruptions"},
+    {key:"dischromic _patches",label:"Discoloured patches"},
+    {key:"blister",label:"Blisters"},{key:"red_spots_over_body",label:"Red spots"},
+    {key:"pus_filled_pimples",label:"Pus-filled pimples"},
+    {key:"blackheads",label:"Blackheads"},
+    {key:"scurring",label:"Scurring"},{key:"skin_peeling",label:"Skin peeling"},
+    {key:"silver_like_dusting",label:"Silver-like dusting"},
+    {key:"small_dents_in_nails",label:"Nail dents"},
+    {key:"inflammatory_nails",label:"Inflamed nails"},
+    {key:"brittle_nails",label:"Brittle nails"},
+    {key:"yellow_crust_ooze",label:"Yellow crust/ooze"},
+    {key:"red_sore_around_nose",label:"Red sore around nose"},
+  ]},
+  { label: "Throat, Nose & Mouth", symptoms: [
+    {key:"throat_irritation",label:"Throat irritation"},
+    {key:"patches_in_throat",label:"Throat patches"},
+    {key:"ulcers_on_tongue",label:"Tongue ulcers"},
+    {key:"drying_and_tingling_lips",label:"Dry/tingling lips"},
+    {key:"runny_nose",label:"Runny nose"},
+    {key:"continuous_sneezing",label:"Sneezing"},
+  ]},
+  { label: "Metabolic & Hormonal", symptoms: [
+    {key:"excessive_hunger",label:"Excessive hunger"},
+    {key:"irregular_sugar_level",label:"Irregular blood sugar"},
+    {key:"obesity",label:"Obesity"},
+    {key:"enlarged_thyroid",label:"Enlarged thyroid"},
+    {key:"abnormal_menstruation",label:"Abnormal menstruation"},
+    {key:"internal_itching",label:"Internal itching"},
+    {key:"toxic_look_(typhos)",label:"Toxic/typhoid look"},
+    {key:"swelled_lymph_nodes",label:"Swollen lymph nodes"},
+    {key:"family_history",label:"Family history"},
+    {key:"extra_marital_contacts",label:"High-risk contacts"},
+  ]},
+];
+
+const DOSHA_NOTES = {
+  Vata: {
+    "Arthritis":"Vata governs movement — imbalance causes dryness and joint degeneration. Warm oil massage and grounding foods are especially beneficial.",
+    "Migraine":"Vata migraines are triggered by irregular routines and stress. Consistent sleep and Nadi Shodhana pranayama are your strongest preventives.",
+    "Cervical spondylosis":"Vata types are most prone to cervical degeneration. Warm sesame oil massage on neck and back daily is key.",
+    "Paralysis (brain hemorrhage)":"Vata governs the nervous system — strokes and paralysis are a Vata imbalance. Grounding, nourishing herbs like Ashwagandha and Bala support recovery.",
+    "(vertigo) paroymsal  positional vertigo":"Vata imbalance causes the erratic movement sensations in vertigo. Warm, grounding therapies and Brahmi calm the nervous system.",
+  },
+  Pitta: {
+    "GERD":"Pitta's fire directly causes acid reflux. Cooling herbs like Shatavari and Amalaki are your primary treatment.",
+    "Peptic ulcer diseae":"Pitta types are most susceptible to peptic ulcers. Avoid all spicy, sour foods; Shatavari and Yashtimadhu are your allies.",
+    "Hepatitis B":"Pitta governs the liver — hepatitis hits Pitta types hardest. Bhumyamalaki is the top Ayurvedic liver herb for you.",
+    "Heart attack":"Pitta's intensity and stress increase cardiac risk. Cooling, calming lifestyle practices are essential prevention.",
+    "Hypertension":"Pitta's heat and intensity drives blood pressure up. Cooling diet and stress management are critical.",
+    "Hyperthyroidism":"Pitta governs metabolic fire — hyperthyroidism is a Pitta excess. Cooling, calming herbs like Brahmi and Shatavari help.",
+  },
+  Kapha: {
+    "Diabetes":"Kapha's heaviness and slow metabolism predispose you to diabetes. Light, dry, warm foods and regular vigorous exercise are essential.",
+    "Obesity":"Kapha types are constitutionally prone to weight gain. Triphala and Guggulu with daily vigorous exercise are your core treatment.",
+    "Hypothyroidism":"Kapha governs slow, heavy metabolism — hypothyroidism is a classic Kapha condition. Stimulating herbs and exercise help.",
+    "Bronchial Asthma":"Kapha accumulates in the lungs causing congestion and asthma. Pippali and Vasaka clear Kapha from the respiratory tract.",
+    "Pneumonia":"Kapha types are prone to respiratory congestion and pneumonia. Warming, expectorant herbs are most effective for you.",
+  },
+};
+
+let severity = "LOW";
+const selected = new Set();
+
+// Render grouped symptoms
+const groupsEl = document.getElementById('symptomGroups');
+SYMPTOM_GROUPS.forEach(group => {
+  const wrap = document.createElement('div');
+  wrap.className = 'cat-group';
+  wrap.innerHTML = `<span class="cat-label">${group.label}</span><div class="sym-grid" data-group="${group.label}"></div>`;
+  const grid = wrap.querySelector('.sym-grid');
+  group.symptoms.forEach(s => {
+    const btn = document.createElement('button');
+    btn.className = 'sym-btn';
+    btn.textContent = s.label;
+    btn.dataset.key = s.key;
+    btn.dataset.label = s.label.toLowerCase();
+    btn.onclick = () => {
+      btn.classList.toggle('active');
+      selected.has(s.key) ? selected.delete(s.key) : selected.add(s.key);
+      document.getElementById('selCount').textContent = selected.size;
+    };
+    grid.appendChild(btn);
+  });
+  groupsEl.appendChild(wrap);
+});
+
+function filterSymptoms(q) {
+  const term = q.toLowerCase().trim();
+  document.querySelectorAll('.sym-btn').forEach(btn => {
+    const match = !term || btn.dataset.label.includes(term) || btn.dataset.key.includes(term);
+    btn.classList.toggle('hidden', !match);
+  });
+  // hide empty group headers
+  document.querySelectorAll('.cat-group').forEach(g => {
+    const visible = [...g.querySelectorAll('.sym-btn')].some(b => !b.classList.contains('hidden'));
+    g.style.display = visible ? '' : 'none';
+  });
+}
+
+function setSev(btn) {
+  document.querySelectorAll('.sev-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  severity = btn.dataset.sev;
+}
+
+async function analyse() {
+  if (selected.size === 0) { setStatus('Please select at least one symptom.', true); return; }
+  document.getElementById('analyseBtn').disabled = true;
+  setStatus('Analysing…');
+  try {
+    const res  = await fetch('/diagnose', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ symptoms: [...selected], severity, dosha: DOSHA }),
+    });
+    const data = await res.json();
+    if (!res.ok) { setStatus(data.error || 'Failed', true); return; }
+    showResult(data);
+    setStatus('');
+  } catch(e) {
+    setStatus('Server error: ' + e.message, true);
+  } finally {
+    document.getElementById('analyseBtn').disabled = false;
+  }
+}
+
+function showResult(data) {
+  document.getElementById('diseaseName').textContent = data.disease;
+  document.getElementById('diseaseHindi').textContent = data.hindi || '';
+  document.getElementById('confidenceBadge').textContent = `${data.confidence}% confidence`;
+
+  const meta = [];
+  if (data.severity)  meta.push(`<div class="meta-pill">Severity: <span>${data.severity}</span></div>`);
+  if (data.doshas)    meta.push(`<div class="meta-pill">Doshas: <span>${data.doshas}</span></div>`);
+  if (data.prognosis) meta.push(`<div class="meta-pill">Prognosis: <span>${data.prognosis}</span></div>`);
+  document.getElementById('metaRow').innerHTML = meta.join('');
+
+  const noteEl = document.getElementById('doshaNote');
+  const dk = resolveDoshaKey(DOSHA);
+  const note = dk && DOSHA_NOTES[dk]?.[data.disease];
+  if (note) {
+    noteEl.innerHTML = `<strong>Prakriti insight (${DOSHA}):</strong> ${note}`;
+    noteEl.style.display = 'block';
+  } else { noteEl.style.display = 'none'; }
+
+  const herbs = data.herbs ? data.herbs.split(',').map(h=>h.trim()).filter(Boolean) : [];
+  document.getElementById('herbGrid').innerHTML = herbs.length
+    ? herbs.map(h => `<div class="herb-chip">${h}</div>`).join('')
+    : '<div style="color:#556;font-size:0.83rem;">No specific herbs found.</div>';
+  document.getElementById('formulationBox').innerHTML = data.formulation
+    ? `<div class="info-box"><strong style="color:#c8a84b;">Formulation:</strong> ${data.formulation}</div>` : '';
+
+  document.getElementById('dietBox').innerHTML       = data.diet       || 'No dietary info available.';
+  document.getElementById('yogaBox').innerHTML       = data.yoga       || 'No yoga recommendations.';
+  document.getElementById('preventionBox').innerHTML = data.prevention || 'No prevention data.';
+  document.getElementById('prognosisBox').innerHTML  = data.complications
+    ? `<div class="info-box" style="border-color:#5c2a2a;margin-top:10px"><strong style="color:#f87;">Possible complications:</strong> ${data.complications}</div>` : '';
+
+  document.getElementById('result').style.display = 'block';
+  document.getElementById('result').scrollIntoView({ behavior: 'smooth' });
+  showTab('herbs', document.querySelector('.tab-btn'));
+}
+
+function resolveDoshaKey(raw) {
+  if (!raw) return null;
+  if (DOSHA_NOTES[raw]) return raw;
+  for (const p of raw.split('+')) {
+    const k = p.trim().charAt(0).toUpperCase() + p.trim().slice(1).toLowerCase();
+    if (DOSHA_NOTES[k]) return k;
+  }
+  return null;
+}
+
+function showTab(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  btn.classList.add('active');
+}
+
+function resetForm() {
+  selected.clear();
+  document.querySelectorAll('.sym-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('selCount').textContent = '0';
+  document.getElementById('result').style.display = 'none';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function setStatus(msg, isError=false) {
+  const el = document.getElementById('status');
+  el.textContent = msg;
+  el.className = isError ? 'error' : '';
+}
+</script>
+{% endblock %}
