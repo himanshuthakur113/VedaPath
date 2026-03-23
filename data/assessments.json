@@ -1,0 +1,32 @@
+[
+  {
+    "id": "1127f9d6-f1f2-47cc-b47e-17134500f842",
+    "date": "23 Mar 2026, 09:17 AM",
+    "dosha": "Kapha",
+    "confidence": 29.5,
+    "face_features": {
+      "Blinking of Eyes": "More or less stable",
+      "Cheeks": "Rounded, Plump",
+      "Complexion": "Dark-Complexion, tans easily",
+      "Eyelashes": "Thick/Fused eyelashes",
+      "Eyes": "Big, round, beautiful, glowing eyes",
+      "Lips": "Lips are large, soft, pink, and full",
+      "Nose": "Rounded, Large open nostrils",
+      "Shape of face": "Long, angular, thin"
+    },
+    "survey_answers": {
+      "Body Weight": "Low - difficulties in gaining weight",
+      "Appetite": "Strong, Unbearable",
+      "Bone Structure": "Large, broad shoulders , heavy bone structure",
+      "Appearance of Hair": "Thick, curly",
+      "Body Size": "Medium",
+      "Teeth and gums": "Big, White, Strong teeth, Healthy gums",
+      "Nails": "Thick, Oily, Smooth, Polished",
+      "General feel of skin": "Dry and thin, cool to touch, rough",
+      "Height": "Tall",
+      "Texture of Skin": "Freckles, many moles, redness and rashes",
+      "Hair Color": "Brown",
+      "Liking tastes": "Sweet / Bitter / Astringent"
+    }
+  }
+]
